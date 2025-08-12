@@ -1,0 +1,10 @@
+{
+	"id": "nanananana",
+	"name": "Nanananana: Leader",
+	"version": "0.1.0",
+	"minAppVersion": "0.15.0",
+	"description": "A modal, keyboard-driven plugin for fast and efficient highlighting in Obsidian.",
+	"author": "Ruben Berenguel",
+	"authorUrl": "https://www.mostlymaths.net",
+	"isDesktopOnly": false
+}

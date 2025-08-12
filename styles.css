@@ -1,0 +1,24 @@
+body.leader-mode-active .workspace-leaf.mod-active .view-content {
+  --leader-color: var(--background-modifier-border-focus);
+  border: 2px solid var(--leader-color);
+  box-shadow: 0 0 8px var(--leader-color);
+  border-radius: var(--radius-m);
+}
+
+/* Style for the hotkey display in the settings tab */
+.leader-hotkey-display {
+	display: inline-flex;
+	gap: 0.5em;
+	align-items: center;
+}
+
+.leader-hotkey-display kbd {
+	display: inline-block;
+	padding: 4px 8px;
+	background-color: var(--background-secondary-alt);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	font-size: var(--font-ui-small);
+	font-family: var(--font-monospace);
+	line-height: 1;
+}
