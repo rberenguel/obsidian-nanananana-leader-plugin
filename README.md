@@ -19,6 +19,8 @@ This plugin provides a "leader key" functionality, inspired by tmux (or vim), to
 > [!WARNING]
 > This plugin is for now _desktop_ (or at least, device with keyboard) only.
 
+![](https://raw.githubusercontent.com/rberenguel/obsidian-nanananana-leader-plugin/main/media/nanananana-leader.png)
+
 ## Installation
 
 ### Manual Installation
