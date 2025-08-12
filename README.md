@@ -4,7 +4,7 @@
 
 An Obsidian plugin that provides a "leader key" to trigger commands, creating a new layer of keyboard shortcuts.
 
-![](https://raw.githubusercontent.com/rberenguel/obsidian-nanananana-plugin/main/media/nanananana.gif)
+![](https://raw.githubusercontent.com/rberenguel/obsidian-nanananana-leader-plugin/main/media/nanananana.gif)
 
 ## Features
 
