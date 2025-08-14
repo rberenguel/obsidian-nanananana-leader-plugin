@@ -1,13 +1,10 @@
-import { App, SuggestModal, Modal, Command, Notice } from "obsidian";
+import { App, SuggestModal, Modal, Command, Notice, Setting } from "obsidian";
 import { CommandMapping, Hotkey } from "./types";
-import { fromKeyEvent, toDisplayString } from "./utils";
+import { fromKeyEvent, toDisplayString, areSequencesEqual } from "./utils";
 
 // Modal for searching and selecting an Obsidian command
 export class SearchableCommandModal extends SuggestModal<Command> {
-	constructor(
-		app: App,
-		private onChoose: (command: Command) => void,
-	) {
+	constructor(app: App, private onChoose: (command: Command) => void) {
 		super(app);
 		this.setPlaceholder("Search for an Obsidian command...");
 	}
@@ -16,7 +13,7 @@ export class SearchableCommandModal extends SuggestModal<Command> {
 		const normalizedQuery = query.toLowerCase();
 		const commands: Command[] = Object.values(
 			(this.app as any).commands.commands,
-		); // <-- Important: Get the raw, unfiltered list
+		);
 
 		return commands.filter((cmd) =>
 			cmd.name.toLowerCase().includes(normalizedQuery),
@@ -31,15 +28,17 @@ export class SearchableCommandModal extends SuggestModal<Command> {
 	}
 }
 
-// Modal for recording a single hotkey
+// Modal for recording a sequence of hotkeys
 export class KeyRecorderModal extends Modal {
 	private eventListener = (event: KeyboardEvent) =>
 		this.handleKeyPress(event);
+	private sequence: Hotkey[] = [];
+	private sequenceDisplayEl: HTMLElement;
 
 	constructor(
 		app: App,
 		private title: string,
-		private onComplete: (hotkey: Hotkey) => void,
+		private onComplete: (hotkey: Hotkey[]) => void,
 	) {
 		super(app);
 	}
@@ -47,7 +46,24 @@ export class KeyRecorderModal extends Modal {
 	onOpen() {
 		this.contentEl.empty();
 		this.titleEl.setText(this.title);
-		this.contentEl.setText("Press the desired key combination now...");
+		this.contentEl.createEl("p", {
+			text: "Press the desired key sequence, then click Save. Press Escape to cancel.",
+		});
+		this.sequenceDisplayEl = this.contentEl.createEl("div", {
+			cls: "leader-hotkey-display",
+		});
+		
+		new Setting(this.contentEl)
+			.addButton(btn => btn
+				.setButtonText("Save")
+				.setCta()
+				.onClick(() => this.save()))
+			.addExtraButton(btn => btn
+				.setIcon("trash")
+				.setTooltip("Delete last key")
+				.onClick(() => this.deleteLast()));
+
+		this.updateDisplay();
 		document.addEventListener("keydown", this.eventListener, {
 			capture: true,
 		});
@@ -59,12 +75,41 @@ export class KeyRecorderModal extends Modal {
 		});
 	}
 
-	handleKeyPress(event: KeyboardEvent) {
+	private save() {
+		if (this.sequence.length > 0) {
+			this.onComplete(this.sequence);
+			this.close();
+		} else {
+			new Notice("Cannot save an empty sequence.");
+		}
+	}
+
+	private deleteLast() {
+		this.sequence.pop();
+		this.updateDisplay();
+	}
+
+	private updateDisplay() {
+		this.sequenceDisplayEl.empty();
+		if (this.sequence.length === 0) {
+			this.sequenceDisplayEl.setText("Waiting for key(s)...");
+		} else {
+			const kbd = this.sequenceDisplayEl.createEl("kbd");
+			kbd.setText(toDisplayString(this.sequence));
+		}
+	}
+
+	private handleKeyPress(event: KeyboardEvent) {
 		event.preventDefault();
 		event.stopPropagation();
 
-		// Check if the key itself is just a modifier. If so, do nothing and wait for the next key.
-		console.log(event.key);
+		// Escape is the only special key, used to close the modal.
+		if (event.key === "Escape") {
+			this.close();
+			return;
+		}
+
+		// Prevent modifier-only keypresses from being recorded.
 		const isModifierOnly = [
 			"Control",
 			"Shift",
@@ -77,25 +122,19 @@ export class KeyRecorderModal extends Modal {
 			return;
 		}
 
-		// Now that we know it's a "real" keypress, process it.
 		const hotkey = fromKeyEvent(event);
-
-		// Safety check
 		if (!hotkey.key) {
-			new Notice("Invalid hotkey.");
+			// This can happen if fromKeyEvent has logic for other invalid keys
 			return;
 		}
 
-		this.onComplete(hotkey);
-		this.close();
+		this.sequence.push(hotkey);
+		this.updateDisplay();
 	}
 }
 
 export class HelpModal extends Modal {
-	constructor(
-		app: App,
-		private mappings: CommandMapping[],
-	) {
+	constructor(app: App, private mappings: CommandMapping[]) {
 		super(app);
 	}
 

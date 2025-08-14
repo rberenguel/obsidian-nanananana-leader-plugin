@@ -34,15 +34,19 @@ export function fromKeyEvent(event: KeyboardEvent): Hotkey {
 		modifiers: Array.from(modifiers).sort(
 			(a, b) => MODIFIER_SORT_ORDER[a] - MODIFIER_SORT_ORDER[b],
 		),
-		key: key.toUpperCase(),
+		key: key.toUpperCase() === " " ? "SPACE" : key.toUpperCase(),
 	};
 }
 
-// Creates a human-readable string like "Mod + Shift + K"
-export function toDisplayString(hotkey: Hotkey): string {
+// Creates a human-readable string like "Mod + K" or a sequence like "T ."
+export function toDisplayString(hotkeyOrSequence: Hotkey | Hotkey[]): string {
+	if (Array.isArray(hotkeyOrSequence)) {
+		return hotkeyOrSequence.map((h) => toDisplayString(h)).join(" ");
+	}
+
+	const hotkey = hotkeyOrSequence;
 	if (!hotkey.key) return "None";
 	const parts = [...hotkey.modifiers];
-	// Obsidian uses symbols for Mod and Shift on Mac
 	if (Platform.isMacOS) {
 		if (parts.includes("Mod")) parts[parts.indexOf("Mod")] = "⌘";
 		if (parts.includes("Shift")) parts[parts.indexOf("Shift")] = "⇧";
@@ -59,6 +63,24 @@ export function areHotkeysEqual(h1: Hotkey, h2: Hotkey): boolean {
 	const mod1 = new Set(h1.modifiers);
 	for (const mod of h2.modifiers) {
 		if (!mod1.has(mod)) return false;
+	}
+	return true;
+}
+
+// Compares two Hotkey sequences for equality
+export function areSequencesEqual(s1: Hotkey[], s2: Hotkey[]): boolean {
+	if (s1.length !== s2.length) return false;
+	for (let i = 0; i < s1.length; i++) {
+		if (!areHotkeysEqual(s1[i], s2[i])) return false;
+	}
+	return true;
+}
+
+// Checks if s1 is a prefix of s2
+export function isPrefixOf(prefix: Hotkey[], sequence: Hotkey[]): boolean {
+	if (prefix.length > sequence.length) return false;
+	for (let i = 0; i < prefix.length; i++) {
+		if (!areHotkeysEqual(prefix[i], sequence[i])) return false;
 	}
 	return true;
 }

@@ -4,9 +4,9 @@ export interface Hotkey {
 	key: string; // e.g., "K"
 }
 
-// Maps a trigger hotkey to a command ID
+// Maps a trigger hotkey sequence to a command ID
 export interface CommandMapping {
-	trigger: Hotkey;
+	trigger: Hotkey[];
 	commandId: string;
 	commandName: string; // Store name for easier display
 }
@@ -16,10 +16,12 @@ export interface LeaderSettings {
 	leaderKey: Hotkey;
 	mappings: CommandMapping[];
 	timeout: number; // Timeout in ms to auto-exit leader mode
+	multiKeyTimeout: number; // Timeout in ms to wait for a subsequent key in a sequence
 }
 
 export const DEFAULT_SETTINGS: LeaderSettings = {
 	leaderKey: { modifiers: ["Mod"], key: " " }, // Default to Cmd/Ctrl + Space
 	mappings: [],
 	timeout: 2000,
+	multiKeyTimeout: 1000,
 };

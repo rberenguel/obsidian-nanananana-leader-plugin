@@ -1,13 +1,26 @@
 import { Plugin, Notice } from "obsidian";
-import { LeaderSettings, DEFAULT_SETTINGS } from "./types";
+import {
+	LeaderSettings,
+	DEFAULT_SETTINGS,
+	Hotkey,
+	CommandMapping,
+} from "./types";
 import { LeaderSettingsTab } from "./settings";
-import { areHotkeysEqual, fromKeyEvent } from "./utils";
-import { HelpModal, SearchableCommandModal } from "modals";
+import {
+	areHotkeysEqual,
+	fromKeyEvent,
+	isPrefixOf,
+	areSequencesEqual,
+	toDisplayString,
+} from "./utils";
+import { HelpModal, SearchableCommandModal } from "./modals";
 
 export default class LeaderHotkeys extends Plugin {
 	settings: LeaderSettings;
 	private isLeaderModeActive = false;
 	private leaderModeTimeoutId: NodeJS.Timeout | null = null;
+	private multiKeyTimeoutId: NodeJS.Timeout | null = null;
+	private currentSequence: Hotkey[] = [];
 	private statusBarItemEl: HTMLElement;
 
 	async onload() {
@@ -39,8 +52,6 @@ export default class LeaderHotkeys extends Plugin {
 				"CapsLock",
 			].includes(event.key);
 			if (isModifierOnly) {
-				// User is holding a modifier, so we wait for the next key.
-				// Do not process this event further.
 				return;
 			}
 		}
@@ -50,38 +61,63 @@ export default class LeaderHotkeys extends Plugin {
 		if (this.isLeaderModeActive) {
 			event.preventDefault();
 			event.stopPropagation();
-			this.clearTimeout();
+			this.clearLeaderTimeout();
+			this.clearMultiKeyTimeout();
 
-			if (hotkey.key === "ESCAPE") {
-				this.exitLeaderMode();
-				return;
+			if (this.currentSequence.length === 0) {
+				if (hotkey.key === "?") {
+					new HelpModal(this.app, this.settings.mappings).open();
+					this.exitLeaderMode();
+					return;
+				}
+				if (hotkey.key === ":") {
+					this.exitLeaderMode();
+					this.openLeaderCommandPrompt();
+					return;
+				}
 			}
 
-			if (hotkey.key === "?") {
-				// Or 'SHIFT' + '/' depending on your fromKeyEvent logic
-				new HelpModal(this.app, this.settings.mappings).open();
-				// Optional: you might want to exit or stay in leader mode here
-				this.exitLeaderMode();
-				return;
-			}
+			this.currentSequence.push(hotkey);
+			this.updateStatusBar();
 
-			if (hotkey.key === ":") {
-				this.exitLeaderMode(); // Exit before opening prompt
-				this.openLeaderCommandPrompt();
-				return;
-			}
-			const mapping = this.settings.mappings.find((m) =>
-				areHotkeysEqual(m.trigger, hotkey),
+			const potentialMatches = this.settings.mappings.filter((m) =>
+				isPrefixOf(this.currentSequence, m.trigger),
 			);
 
-			if (mapping) {
-				(this.app as any).commands.executeCommandById(
-					mapping.commandId,
+			if (potentialMatches.length === 0) {
+				new Notice(
+					`Leader: No mapping for "${toDisplayString(
+						this.currentSequence,
+					)}"`,
 				);
-			} else {
-				new Notice("Leader Hotkeys: No mapping found.");
+				this.exitLeaderMode();
+				return;
 			}
-			this.exitLeaderMode();
+
+			const exactMatch = potentialMatches.find((m) =>
+				areSequencesEqual(this.currentSequence, m.trigger),
+			);
+			const isPrefix = potentialMatches.some(
+				(m) => m.trigger.length > this.currentSequence.length,
+			);
+
+			if (exactMatch && isPrefix) {
+				this.multiKeyTimeoutId = setTimeout(() => {
+					this.executeCommand(exactMatch);
+				}, this.settings.multiKeyTimeout);
+				this.startLeaderTimeout();
+			} else if (exactMatch && !isPrefix) {
+				this.executeCommand(exactMatch);
+			} else if (!exactMatch && isPrefix) {
+				this.startLeaderTimeout();
+			} else {
+				new Notice(
+					`Leader: Invalid sequence "${toDisplayString(
+						this.currentSequence,
+					)}"`,
+				);
+				this.exitLeaderMode();
+			}
 		} else if (areHotkeysEqual(hotkey, this.settings.leaderKey)) {
 			event.preventDefault();
 			event.stopPropagation();
@@ -89,9 +125,12 @@ export default class LeaderHotkeys extends Plugin {
 		}
 	}
 
+	private executeCommand(mapping: CommandMapping) {
+		(this.app as any).commands.executeCommandById(mapping.commandId);
+		this.exitLeaderMode();
+	}
+
 	private openLeaderCommandPrompt(): void {
-		// We reuse SearchableCommandModal, but the callback is different.
-		// Instead of creating a mapping, it just executes the command.
 		new SearchableCommandModal(this.app, (command) => {
 			(this.app as any).commands.executeCommandById(command.id);
 		}).open();
@@ -99,25 +138,49 @@ export default class LeaderHotkeys extends Plugin {
 
 	private enterLeaderMode(): void {
 		this.isLeaderModeActive = true;
+		this.currentSequence = [];
 		document.body.classList.add("leader-mode-active");
+		this.updateStatusBar();
 		this.statusBarItemEl.show();
+		this.startLeaderTimeout();
+	}
+
+	private exitLeaderMode(): void {
+		this.isLeaderModeActive = false;
+		this.currentSequence = [];
+		document.body.classList.remove("leader-mode-active");
+		this.statusBarItemEl.hide();
+		this.clearLeaderTimeout();
+		this.clearMultiKeyTimeout();
+	}
+
+	private startLeaderTimeout(): void {
+		this.clearLeaderTimeout();
 		this.leaderModeTimeoutId = setTimeout(() => {
 			new Notice("Leader mode timed out.");
 			this.exitLeaderMode();
 		}, this.settings.timeout);
 	}
 
-	private exitLeaderMode(): void {
-		this.isLeaderModeActive = false;
-		document.body.classList.remove("leader-mode-active");
-		this.statusBarItemEl.hide();
-		this.clearTimeout();
-	}
-
-	private clearTimeout(): void {
+	private clearLeaderTimeout(): void {
 		if (this.leaderModeTimeoutId) {
 			clearTimeout(this.leaderModeTimeoutId);
 			this.leaderModeTimeoutId = null;
+		}
+	}
+
+	private clearMultiKeyTimeout(): void {
+		if (this.multiKeyTimeoutId) {
+			clearTimeout(this.multiKeyTimeoutId);
+			this.multiKeyTimeoutId = null;
+		}
+	}
+
+	private updateStatusBar(): void {
+		if (this.currentSequence.length > 0) {
+			this.statusBarItemEl.setText(`␣ ${toDisplayString(this.currentSequence)}`);
+		} else {
+			this.statusBarItemEl.setText("␣ LEADER");
 		}
 	}
 
