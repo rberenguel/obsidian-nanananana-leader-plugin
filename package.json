@@ -1,6 +1,6 @@
 {
 	"name": "nanananana",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "A modal, keyboard-driven plugin for fast and efficient highlighting in Obsidian.",
 	"main": "main.js",
 	"scripts": {
