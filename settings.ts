@@ -1,8 +1,8 @@
-import { App, PluginSettingTab, Setting, Command } from "obsidian";
+import { App, PluginSettingTab, Setting } from "obsidian";
 import LeaderHotkeys from "./main";
 import { CommandMapping, Hotkey } from "./types";
 import { toDisplayString, areSequencesEqual } from "./utils";
-import { SearchableCommandModal, KeyRecorderModal } from "./modals";
+import { KeyRecorderModal, MappingEditModal } from "./modals";
 
 export class LeaderSettingsTab extends PluginSettingTab {
 	plugin: LeaderHotkeys;
@@ -16,7 +16,7 @@ export class LeaderSettingsTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 		containerEl.createEl("h2", {
-			text: "Nanananana Leader: Hotkeys Settings",
+			text: "Leader Hotkeys Settings",
 		});
 
 		new Setting(containerEl)
@@ -81,54 +81,24 @@ export class LeaderSettingsTab extends PluginSettingTab {
 
 		containerEl.createEl("h3", { text: "Command Mappings" });
 
-		this.plugin.settings.mappings.forEach((mapping) => {
+		this.plugin.settings.mappings.forEach((mapping, index) => {
 			const setting = new Setting(containerEl)
-				.setName(mapping.commandName)
-				.setDesc(
-					`Triggered by pressing the key sequence after the leader key.`,
-				);
-
-			const hotkeyDisplay = setting.controlEl.createDiv({
-				cls: "leader-hotkey-display is-clickable",
-			});
-			// FIX: Use the 'title' property for standard HTML tooltips
-			hotkeyDisplay.title = "Click to change keybinding";
-
-			const kbd = hotkeyDisplay.createEl("kbd");
-			kbd.setText(toDisplayString(mapping.trigger));
+				.setName(mapping.commands.map(c => c.name).join(' → '));
 			
-			hotkeyDisplay.addEventListener("click", () => {
-				new KeyRecorderModal(
-					this.app,
-					`Press new sequence for "${mapping.commandName}"`,
-					(hotkeySequence: Hotkey[]) => {
-						const existing = this.plugin.settings.mappings.find(
-							(m) => areSequencesEqual(m.trigger, hotkeySequence)
-						);
-						if (existing && existing.commandId !== mapping.commandId) {
-							new (this.app as any).Notice(
-								`Error: Sequence "${toDisplayString(
-									hotkeySequence,
-								)}" is already mapped to "${
-									existing.commandName
-								}".`,
-							);
-							return;
-						}
-
-						mapping.trigger = hotkeySequence;
-
-						this.plugin.settings.mappings.sort(
-							(a, b) =>
-								a.trigger.length - b.trigger.length ||
-								toDisplayString(a.trigger).localeCompare(
-									toDisplayString(b.trigger),
-								),
-						);
-						this.plugin.saveSettings();
-						this.display();
-					},
-				).open();
+			// Move trigger to the right-hand side for clarity
+			const triggerDiv = setting.controlEl.createDiv({
+				cls: "leader-hotkey-display",
+			});
+			triggerDiv.createEl("kbd").setText(toDisplayString(mapping.trigger));
+			triggerDiv.style.marginRight = "1em"; // Add spacing before buttons
+			
+			setting.addExtraButton((button) => {
+				button
+					.setIcon("pencil")
+					.setTooltip("Edit mapping")
+					.onClick(() => {
+						this.openEditMappingWorkflow(mapping, index);
+					});
 			});
 
 			setting.addExtraButton((button) => {
@@ -136,12 +106,9 @@ export class LeaderSettingsTab extends PluginSettingTab {
 					.setIcon("trash")
 					.setTooltip("Delete mapping")
 					.onClick(async () => {
-						const indexToDelete = this.plugin.settings.mappings.findIndex(m => m.commandId === mapping.commandId && areSequencesEqual(m.trigger, mapping.trigger));
-						if (indexToDelete > -1) {
-							this.plugin.settings.mappings.splice(indexToDelete, 1);
-							await this.plugin.saveSettings();
-							this.display();
-						}
+						this.plugin.settings.mappings.splice(index, 1);
+						await this.plugin.saveSettings();
+						this.display();
 					});
 			});
 		});
@@ -157,43 +124,59 @@ export class LeaderSettingsTab extends PluginSettingTab {
 	}
 
 	private openAddMappingWorkflow() {
-		new SearchableCommandModal(this.app, (command: Command) => {
-			new KeyRecorderModal(
-				this.app,
-				`Press trigger sequence for "${command.name}"`,
-				(hotkeySequence: Hotkey[]) => {
-					const existing = this.plugin.settings.mappings.find((m) =>
-						areSequencesEqual(m.trigger, hotkeySequence),
-					);
-					if (existing) {
-						new (this.app as any).Notice(
-							`Error: Sequence "${toDisplayString(
-								hotkeySequence,
-							)}" is already mapped to "${
-								existing.commandName
-							}".`,
-						);
-						return;
-					}
+		const newMapping: CommandMapping = {
+			trigger: [],
+			commands: [],
+		};
 
-					const newMapping: CommandMapping = {
-						trigger: hotkeySequence,
-						commandId: command.id,
-						commandName: command.name,
-					};
+		new MappingEditModal(this.app, newMapping, (savedMapping) => {
+			const existing = this.plugin.settings.mappings.find((m) =>
+				areSequencesEqual(m.trigger, savedMapping.trigger),
+			);
+			if (existing) {
+				new (this.app as any).Notice(
+					`Error: Sequence "${toDisplayString(
+						savedMapping.trigger,
+					)}" is already mapped to "${existing.commands.map(c => c.name).join(' → ')}".`,
+				);
+				return false;
+			}
 
-					this.plugin.settings.mappings.push(newMapping);
-					this.plugin.settings.mappings.sort(
-						(a, b) =>
-							a.trigger.length - b.trigger.length ||
-							toDisplayString(a.trigger).localeCompare(
-								toDisplayString(b.trigger),
-							),
-					);
-					this.plugin.saveSettings();
-					this.display();
-				},
-			).open();
+			this.plugin.settings.mappings.push(savedMapping);
+			this.sortAndSave();
+			return true;
 		}).open();
+	}
+
+	private openEditMappingWorkflow(mapping: CommandMapping, index: number) {
+		new MappingEditModal(this.app, mapping, (savedMapping) => {
+			const existing = this.plugin.settings.mappings.find((m, i) =>
+				i !== index && areSequencesEqual(m.trigger, savedMapping.trigger),
+			);
+			if (existing) {
+				new (this.app as any).Notice(
+					`Error: Sequence "${toDisplayString(
+						savedMapping.trigger,
+					)}" is already mapped to "${existing.commands.map(c => c.name).join(' → ')}".`,
+				);
+				return false;
+			}
+			
+			this.plugin.settings.mappings[index] = savedMapping;
+			this.sortAndSave();
+			return true;
+		}).open();
+	}
+
+	private sortAndSave() {
+		this.plugin.settings.mappings.sort(
+			(a, b) =>
+				a.trigger.length - b.trigger.length ||
+				toDisplayString(a.trigger).localeCompare(
+					toDisplayString(b.trigger),
+				),
+		);
+		this.plugin.saveSettings();
+		this.display();
 	}
 }

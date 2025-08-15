@@ -11,7 +11,7 @@ An Obsidian plugin that provides a "leader key" to trigger commands, creating a 
 This plugin provides a "leader key" functionality, inspired by tmux (or vim), to create a new layer of keybindings.
 
 - **Leader Key**: Press a designated "leader" hotkey (default: `Mod+Space`) to enter a special mode.
-- **Command Mappings**: Once in leader mode, press a subsequent key to trigger any Obsidian command.
+- **Command Mappings**: Once in leader mode, press a subsequent key(s) to trigger any Obsidian command, or a series of commands.
 - **Customizable**: Configure the leader key, the timeout, and all command mappings through the settings tab.
 - **Discoverability**: A status bar item and a border effect indicate when leader mode is active.
 - **Help Modal**: Press `?` in leader mode to see a list of all your configured key mappings.
@@ -20,6 +20,8 @@ This plugin provides a "leader key" functionality, inspired by tmux (or vim), to
 > This plugin is for now _desktop_ (or at least, device with keyboard) only.
 
 ![](https://raw.githubusercontent.com/rberenguel/obsidian-nanananana-leader-plugin/main/media/nanananana-leader.png)
+
+![](https://raw.githubusercontent.com/rberenguel/obsidian-nanananana-leader-plugin/main/media/nanananana-leader-chains.png)
 
 ## Installation
 

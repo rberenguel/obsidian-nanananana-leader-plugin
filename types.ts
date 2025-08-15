@@ -4,11 +4,16 @@ export interface Hotkey {
 	key: string; // e.g., "K"
 }
 
-// Maps a trigger hotkey sequence to a command ID
+// Represents a single command to be executed.
+export interface MappedCommand {
+	id: string;
+	name: string;
+}
+
+// Maps a trigger hotkey sequence to one or more commands
 export interface CommandMapping {
 	trigger: Hotkey[];
-	commandId: string;
-	commandName: string; // Store name for easier display
+	commands: MappedCommand[];
 }
 
 // The complete settings object for the plugin

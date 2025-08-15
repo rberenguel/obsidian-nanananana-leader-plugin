@@ -126,7 +126,9 @@ export default class LeaderHotkeys extends Plugin {
 	}
 
 	private executeCommand(mapping: CommandMapping) {
-		(this.app as any).commands.executeCommandById(mapping.commandId);
+		for (const command of mapping.commands) {
+			(this.app as any).commands.executeCommandById(command.id);
+		}
 		this.exitLeaderMode();
 	}
 
@@ -185,10 +187,26 @@ export default class LeaderHotkeys extends Plugin {
 	}
 
 	async loadSettings() {
+		const savedData = await this.loadData();
+		
+		// Migration for command chaining
+		if (savedData && savedData.mappings) {
+			savedData.mappings = savedData.mappings.map((m: any) => {
+				// If it has commandId, it's the old format
+				if (m.commandId && !m.commands) {
+					return {
+						trigger: m.trigger,
+						commands: [{ id: m.commandId, name: m.commandName }]
+					};
+				}
+				return m;
+			});
+		}
+
 		this.settings = Object.assign(
 			{},
 			DEFAULT_SETTINGS,
-			await this.loadData(),
+			savedData,
 		);
 	}
 

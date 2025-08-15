@@ -1,6 +1,6 @@
 import { App, SuggestModal, Modal, Command, Notice, Setting } from "obsidian";
 import { CommandMapping, Hotkey } from "./types";
-import { fromKeyEvent, toDisplayString, areSequencesEqual } from "./utils";
+import { fromKeyEvent, toDisplayString } from "./utils";
 
 // Modal for searching and selecting an Obsidian command
 export class SearchableCommandModal extends SuggestModal<Command> {
@@ -103,13 +103,11 @@ export class KeyRecorderModal extends Modal {
 		event.preventDefault();
 		event.stopPropagation();
 
-		// Escape is the only special key, used to close the modal.
 		if (event.key === "Escape") {
 			this.close();
 			return;
 		}
 
-		// Prevent modifier-only keypresses from being recorded.
 		const isModifierOnly = [
 			"Control",
 			"Shift",
@@ -124,7 +122,6 @@ export class KeyRecorderModal extends Modal {
 
 		const hotkey = fromKeyEvent(event);
 		if (!hotkey.key) {
-			// This can happen if fromKeyEvent has logic for other invalid keys
 			return;
 		}
 
@@ -132,6 +129,122 @@ export class KeyRecorderModal extends Modal {
 		this.updateDisplay();
 	}
 }
+
+// NEW: Modal for creating and editing a command mapping (potentially a chain)
+export class MappingEditModal extends Modal {
+	private mapping: CommandMapping;
+	private triggerDisplay: HTMLElement;
+
+	constructor(
+		app: App,
+		originalMapping: CommandMapping,
+		private onSave: (mapping: CommandMapping) => boolean, // Return true on success to close
+	) {
+		super(app);
+		// Deep copy to avoid modifying the original until saved
+		this.mapping = JSON.parse(JSON.stringify(originalMapping));
+	}
+
+	onOpen() {
+		this.contentEl.empty();
+		this.titleEl.setText(this.mapping.commands.length > 0 ? "Edit Mapping" : "New Mapping");
+		
+		this.drawTriggerSetting();
+		this.drawCommandsSetting();
+
+		new Setting(this.contentEl)
+			.addButton((btn) =>
+				btn
+					.setButtonText("Save")
+					.setCta()
+					.onClick(() => {
+						if (this.mapping.trigger.length === 0) {
+							new Notice("Trigger sequence cannot be empty.");
+							return;
+						}
+						if (this.mapping.commands.length === 0) {
+							new Notice("Command chain cannot be empty.");
+							return;
+						}
+						if (this.onSave(this.mapping)) {
+							this.close();
+						}
+					}),
+			);
+	}
+    
+    private redraw() {
+        const { contentEl, titleEl } = this;
+        const scroll = contentEl.scrollTop;
+        this.onOpen();
+        contentEl.scrollTop = scroll;
+    }
+    
+	private drawTriggerSetting() {
+		new Setting(this.contentEl)
+			.setName("Trigger Sequence")
+			.setDesc("The key sequence to trigger the command(s).")
+			.then(setting => {
+				this.triggerDisplay = setting.controlEl.createDiv({ cls: "leader-hotkey-display" });
+				this.updateTriggerDisplay();
+
+				setting.addButton(btn => btn
+					.setButtonText("Change")
+					.onClick(() => {
+						new KeyRecorderModal(
+							this.app,
+							"Press new trigger sequence",
+							(hotkeySequence) => {
+								this.mapping.trigger = hotkeySequence;
+								this.updateTriggerDisplay();
+							}
+						).open();
+					})
+				);
+			});
+	}
+    
+    private updateTriggerDisplay() {
+        this.triggerDisplay.empty();
+        const kbd = this.triggerDisplay.createEl("kbd");
+        kbd.setText(this.mapping.trigger.length > 0 ? toDisplayString(this.mapping.trigger) : "Not set");
+    }
+
+	private drawCommandsSetting() {
+		const setting = new Setting(this.contentEl)
+			.setName("Chained Commands")
+			.setDesc("The commands to execute in order.");
+			
+		const commandListEl = this.contentEl.createDiv();
+		this.mapping.commands.forEach((command, index) => {
+			new Setting(commandListEl)
+                .setName(command.name)
+                .addExtraButton(btn => btn
+                    .setIcon("trash")
+                    .setTooltip("Remove command")
+                    .onClick(() => {
+                        this.mapping.commands.splice(index, 1);
+                        this.redraw();
+                    })
+                );
+		});
+
+		setting.addButton((btn) =>
+				btn
+					.setButtonText("Add Command")
+					.onClick(() => {
+						new SearchableCommandModal(this.app, (command) => {
+							this.mapping.commands.push({
+								id: command.id,
+								name: command.name,
+							});
+							this.redraw();
+						}).open();
+					})
+			);
+	}
+}
+
 
 export class HelpModal extends Modal {
 	constructor(app: App, private mappings: CommandMapping[]) {
@@ -153,7 +266,7 @@ export class HelpModal extends Modal {
 			const row = tbody.createEl("tr");
 			const keyCell = row.createEl("td");
 			keyCell.createEl("kbd").setText(toDisplayString(mapping.trigger));
-			row.createEl("td").setText(mapping.commandName);
+			row.createEl("td").setText(mapping.commands.map(c => c.name).join(' → '));
 		});
 	}
 }
