@@ -6,6 +6,16 @@ An Obsidian plugin that provides a "leader key" to trigger commands, creating a 
 
 ![](https://raw.githubusercontent.com/rberenguel/obsidian-nanananana-leader-plugin/main/media/nanananana.gif)
 
+## Some use cases
+
+- Splitting vertically or horizontally quickly, without polluting the "main" shortcut list.
+- Moving around these splits.
+- "Zen" mode, toggling all sidebars and ribbon as a chain of commands.
+- Fix some annoyances on mobile (iPad):
+    - Switching across panels does not move editing focus to them. Chain _Focus on tab group POS_ with _Focus on last note_ to fix this.
+    - Same for splitting vertically / horizontally.
+- Shortcuts to files. Like your `Inbox` file, or your `Projects` base, or…
+
 ## Features
 
 This plugin provides a "leader key" functionality, inspired by tmux (or vim), to create a new layer of keybindings.
