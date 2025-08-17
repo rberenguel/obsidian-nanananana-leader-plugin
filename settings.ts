@@ -21,7 +21,9 @@ export class LeaderSettingsTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Leader Key")
-			.setDesc("The key that activates leader mode. Default is Mod+Space.")
+			.setDesc(
+				"The key that activates leader mode. Default is Mod+Space.",
+			)
 			.addButton((button) => {
 				button
 					.setTooltip("Click to set new leader key")
@@ -82,16 +84,19 @@ export class LeaderSettingsTab extends PluginSettingTab {
 		containerEl.createEl("h3", { text: "Command Mappings" });
 
 		this.plugin.settings.mappings.forEach((mapping, index) => {
-			const setting = new Setting(containerEl)
-				.setName(mapping.commands.map(c => c.name).join(' → '));
-			
+			const setting = new Setting(containerEl).setName(
+				mapping.commands.map((c) => c.name).join(" → "),
+			);
+
 			// Move trigger to the right-hand side for clarity
 			const triggerDiv = setting.controlEl.createDiv({
 				cls: "leader-hotkey-display",
 			});
-			triggerDiv.createEl("kbd").setText(toDisplayString(mapping.trigger));
+			triggerDiv
+				.createEl("kbd")
+				.setText(toDisplayString(mapping.trigger));
 			triggerDiv.style.marginRight = "1em"; // Add spacing before buttons
-			
+
 			setting.addExtraButton((button) => {
 				button
 					.setIcon("pencil")
@@ -137,7 +142,7 @@ export class LeaderSettingsTab extends PluginSettingTab {
 				new (this.app as any).Notice(
 					`Error: Sequence "${toDisplayString(
 						savedMapping.trigger,
-					)}" is already mapped to "${existing.commands.map(c => c.name).join(' → ')}".`,
+					)}" is already mapped to "${existing.commands.map((c) => c.name).join(" → ")}".`,
 				);
 				return false;
 			}
@@ -150,18 +155,20 @@ export class LeaderSettingsTab extends PluginSettingTab {
 
 	private openEditMappingWorkflow(mapping: CommandMapping, index: number) {
 		new MappingEditModal(this.app, mapping, (savedMapping) => {
-			const existing = this.plugin.settings.mappings.find((m, i) =>
-				i !== index && areSequencesEqual(m.trigger, savedMapping.trigger),
+			const existing = this.plugin.settings.mappings.find(
+				(m, i) =>
+					i !== index &&
+					areSequencesEqual(m.trigger, savedMapping.trigger),
 			);
 			if (existing) {
 				new (this.app as any).Notice(
 					`Error: Sequence "${toDisplayString(
 						savedMapping.trigger,
-					)}" is already mapped to "${existing.commands.map(c => c.name).join(' → ')}".`,
+					)}" is already mapped to "${existing.commands.map((c) => c.name).join(" → ")}".`,
 				);
 				return false;
 			}
-			
+
 			this.plugin.settings.mappings[index] = savedMapping;
 			this.sortAndSave();
 			return true;

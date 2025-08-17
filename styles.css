@@ -1,8 +1,8 @@
 body.leader-mode-active .workspace-leaf.mod-active .view-content {
-  --leader-color: var(--background-modifier-border-focus);
-  border: 4px solid var(--leader-color);
-  box-shadow: 0 0 8px var(--leader-color);
-  border-radius: var(--radius-m);
+	--leader-color: var(--background-modifier-border-focus);
+	border: 4px solid var(--leader-color);
+	box-shadow: 0 0 8px var(--leader-color);
+	border-radius: var(--radius-m);
 }
 
 /* Style for the hotkey display in the settings tab */

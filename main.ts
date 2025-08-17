@@ -180,7 +180,9 @@ export default class LeaderHotkeys extends Plugin {
 
 	private updateStatusBar(): void {
 		if (this.currentSequence.length > 0) {
-			this.statusBarItemEl.setText(`␣ ${toDisplayString(this.currentSequence)}`);
+			this.statusBarItemEl.setText(
+				`␣ ${toDisplayString(this.currentSequence)}`,
+			);
 		} else {
 			this.statusBarItemEl.setText("␣ LEADER");
 		}
@@ -188,7 +190,7 @@ export default class LeaderHotkeys extends Plugin {
 
 	async loadSettings() {
 		const savedData = await this.loadData();
-		
+
 		// Migration for command chaining
 		if (savedData && savedData.mappings) {
 			savedData.mappings = savedData.mappings.map((m: any) => {
@@ -196,18 +198,14 @@ export default class LeaderHotkeys extends Plugin {
 				if (m.commandId && !m.commands) {
 					return {
 						trigger: m.trigger,
-						commands: [{ id: m.commandId, name: m.commandName }]
+						commands: [{ id: m.commandId, name: m.commandName }],
 					};
 				}
 				return m;
 			});
 		}
 
-		this.settings = Object.assign(
-			{},
-			DEFAULT_SETTINGS,
-			savedData,
-		);
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, savedData);
 	}
 
 	async saveSettings() {

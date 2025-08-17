@@ -4,7 +4,10 @@ import { fromKeyEvent, toDisplayString } from "./utils";
 
 // Modal for searching and selecting an Obsidian command
 export class SearchableCommandModal extends SuggestModal<Command> {
-	constructor(app: App, private onChoose: (command: Command) => void) {
+	constructor(
+		app: App,
+		private onChoose: (command: Command) => void,
+	) {
 		super(app);
 		this.setPlaceholder("Search for an Obsidian command...");
 	}
@@ -52,16 +55,20 @@ export class KeyRecorderModal extends Modal {
 		this.sequenceDisplayEl = this.contentEl.createEl("div", {
 			cls: "leader-hotkey-display",
 		});
-		
+
 		new Setting(this.contentEl)
-			.addButton(btn => btn
-				.setButtonText("Save")
-				.setCta()
-				.onClick(() => this.save()))
-			.addExtraButton(btn => btn
-				.setIcon("trash")
-				.setTooltip("Delete last key")
-				.onClick(() => this.deleteLast()));
+			.addButton((btn) =>
+				btn
+					.setButtonText("Save")
+					.setCta()
+					.onClick(() => this.save()),
+			)
+			.addExtraButton((btn) =>
+				btn
+					.setIcon("trash")
+					.setTooltip("Delete last key")
+					.onClick(() => this.deleteLast()),
+			);
 
 		this.updateDisplay();
 		document.addEventListener("keydown", this.eventListener, {
@@ -147,107 +154,114 @@ export class MappingEditModal extends Modal {
 
 	onOpen() {
 		this.contentEl.empty();
-		this.titleEl.setText(this.mapping.commands.length > 0 ? "Edit Mapping" : "New Mapping");
-		
+		this.titleEl.setText(
+			this.mapping.commands.length > 0 ? "Edit Mapping" : "New Mapping",
+		);
+
 		this.drawTriggerSetting();
 		this.drawCommandsSetting();
 
-		new Setting(this.contentEl)
-			.addButton((btn) =>
-				btn
-					.setButtonText("Save")
-					.setCta()
-					.onClick(() => {
-						if (this.mapping.trigger.length === 0) {
-							new Notice("Trigger sequence cannot be empty.");
-							return;
-						}
-						if (this.mapping.commands.length === 0) {
-							new Notice("Command chain cannot be empty.");
-							return;
-						}
-						if (this.onSave(this.mapping)) {
-							this.close();
-						}
-					}),
-			);
+		new Setting(this.contentEl).addButton((btn) =>
+			btn
+				.setButtonText("Save")
+				.setCta()
+				.onClick(() => {
+					if (this.mapping.trigger.length === 0) {
+						new Notice("Trigger sequence cannot be empty.");
+						return;
+					}
+					if (this.mapping.commands.length === 0) {
+						new Notice("Command chain cannot be empty.");
+						return;
+					}
+					if (this.onSave(this.mapping)) {
+						this.close();
+					}
+				}),
+		);
 	}
-    
-    private redraw() {
-        const { contentEl, titleEl } = this;
-        const scroll = contentEl.scrollTop;
-        this.onOpen();
-        contentEl.scrollTop = scroll;
-    }
-    
+
+	private redraw() {
+		const { contentEl, titleEl } = this;
+		const scroll = contentEl.scrollTop;
+		this.onOpen();
+		contentEl.scrollTop = scroll;
+	}
+
 	private drawTriggerSetting() {
 		new Setting(this.contentEl)
 			.setName("Trigger Sequence")
 			.setDesc("The key sequence to trigger the command(s).")
-			.then(setting => {
-				this.triggerDisplay = setting.controlEl.createDiv({ cls: "leader-hotkey-display" });
+			.then((setting) => {
+				this.triggerDisplay = setting.controlEl.createDiv({
+					cls: "leader-hotkey-display",
+				});
 				this.updateTriggerDisplay();
 
-				setting.addButton(btn => btn
-					.setButtonText("Change")
-					.onClick(() => {
+				setting.addButton((btn) =>
+					btn.setButtonText("Change").onClick(() => {
 						new KeyRecorderModal(
 							this.app,
 							"Press new trigger sequence",
 							(hotkeySequence) => {
 								this.mapping.trigger = hotkeySequence;
 								this.updateTriggerDisplay();
-							}
+							},
 						).open();
-					})
+					}),
 				);
 			});
 	}
-    
-    private updateTriggerDisplay() {
-        this.triggerDisplay.empty();
-        const kbd = this.triggerDisplay.createEl("kbd");
-        kbd.setText(this.mapping.trigger.length > 0 ? toDisplayString(this.mapping.trigger) : "Not set");
-    }
+
+	private updateTriggerDisplay() {
+		this.triggerDisplay.empty();
+		const kbd = this.triggerDisplay.createEl("kbd");
+		kbd.setText(
+			this.mapping.trigger.length > 0
+				? toDisplayString(this.mapping.trigger)
+				: "Not set",
+		);
+	}
 
 	private drawCommandsSetting() {
 		const setting = new Setting(this.contentEl)
 			.setName("Chained Commands")
 			.setDesc("The commands to execute in order.");
-			
+
 		const commandListEl = this.contentEl.createDiv();
 		this.mapping.commands.forEach((command, index) => {
 			new Setting(commandListEl)
-                .setName(command.name)
-                .addExtraButton(btn => btn
-                    .setIcon("trash")
-                    .setTooltip("Remove command")
-                    .onClick(() => {
-                        this.mapping.commands.splice(index, 1);
-                        this.redraw();
-                    })
-                );
+				.setName(command.name)
+				.addExtraButton((btn) =>
+					btn
+						.setIcon("trash")
+						.setTooltip("Remove command")
+						.onClick(() => {
+							this.mapping.commands.splice(index, 1);
+							this.redraw();
+						}),
+				);
 		});
 
 		setting.addButton((btn) =>
-				btn
-					.setButtonText("Add Command")
-					.onClick(() => {
-						new SearchableCommandModal(this.app, (command) => {
-							this.mapping.commands.push({
-								id: command.id,
-								name: command.name,
-							});
-							this.redraw();
-						}).open();
-					})
-			);
+			btn.setButtonText("Add Command").onClick(() => {
+				new SearchableCommandModal(this.app, (command) => {
+					this.mapping.commands.push({
+						id: command.id,
+						name: command.name,
+					});
+					this.redraw();
+				}).open();
+			}),
+		);
 	}
 }
 
-
 export class HelpModal extends Modal {
-	constructor(app: App, private mappings: CommandMapping[]) {
+	constructor(
+		app: App,
+		private mappings: CommandMapping[],
+	) {
 		super(app);
 	}
 
@@ -266,7 +280,9 @@ export class HelpModal extends Modal {
 			const row = tbody.createEl("tr");
 			const keyCell = row.createEl("td");
 			keyCell.createEl("kbd").setText(toDisplayString(mapping.trigger));
-			row.createEl("td").setText(mapping.commands.map(c => c.name).join(' → '));
+			row.createEl("td").setText(
+				mapping.commands.map((c) => c.name).join(" → "),
+			);
 		});
 	}
 }
