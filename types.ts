@@ -4,11 +4,22 @@ export interface Hotkey {
 	key: string; // e.g., "K"
 }
 
-// Represents a single command to be executed.
-export interface MappedCommand {
+// Represents a standard Obsidian command.
+export interface ObsidianCommand {
+	type: "obsidian";
 	id: string;
 	name: string;
 }
+
+// Represents our new virtual command to open a file.
+export interface OpenFileCommand {
+	type: "open-file";
+	path: string; // Vault path to the file
+	name: string; // Display name, e.g., "Open file: Inbox"
+}
+
+// A command can now be one of the defined types.
+export type MappedCommand = ObsidianCommand | OpenFileCommand;
 
 // Maps a trigger hotkey sequence to one or more commands
 export interface CommandMapping {

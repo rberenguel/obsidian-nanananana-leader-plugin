@@ -1,5 +1,19 @@
-import { App, SuggestModal, Modal, Command, Notice, Setting } from "obsidian";
-import { CommandMapping, Hotkey } from "./types";
+import {
+	App,
+	SuggestModal,
+	Modal,
+	Command,
+	Notice,
+	Setting,
+	TFile,
+} from "obsidian";
+import {
+	CommandMapping,
+	Hotkey,
+	MappedCommand,
+	ObsidianCommand,
+	OpenFileCommand,
+} from "./types";
 import { fromKeyEvent, toDisplayString } from "./utils";
 
 // Modal for searching and selecting an Obsidian command
@@ -28,6 +42,38 @@ export class SearchableCommandModal extends SuggestModal<Command> {
 
 	onChooseSuggestion(command: Command): void {
 		this.onChoose(command);
+	}
+}
+
+// NEW: Modal for searching and selecting a file from the vault
+export class FileSuggestModal extends SuggestModal<TFile> {
+	constructor(
+		app: App,
+		private onChoose: (file: TFile) => void,
+	) {
+		super(app);
+		this.setPlaceholder("Search for a file to open...");
+	}
+
+	getSuggestions(query: string): TFile[] {
+		const normalizedQuery = query.toLowerCase();
+		return this.app.vault
+			.getMarkdownFiles()
+			.filter((file) =>
+				file.path.toLowerCase().includes(normalizedQuery),
+			);
+	}
+
+	renderSuggestion(file: TFile, el: HTMLElement): void {
+		el.createEl("div", { text: file.basename });
+		el.createEl("small", {
+			text: file.path,
+			cls: "nav-file-title-content",
+		});
+	}
+
+	onChooseSuggestion(file: TFile): void {
+		this.onChoose(file);
 	}
 }
 
@@ -137,7 +183,7 @@ export class KeyRecorderModal extends Modal {
 	}
 }
 
-// NEW: Modal for creating and editing a command mapping (potentially a chain)
+// Modal for creating and editing a command mapping (potentially a chain)
 export class MappingEditModal extends Modal {
 	private mapping: CommandMapping;
 	private triggerDisplay: HTMLElement;
@@ -182,7 +228,7 @@ export class MappingEditModal extends Modal {
 	}
 
 	private redraw() {
-		const { contentEl, titleEl } = this;
+		const { contentEl } = this;
 		const scroll = contentEl.scrollTop;
 		this.onOpen();
 		contentEl.scrollTop = scroll;
@@ -243,13 +289,30 @@ export class MappingEditModal extends Modal {
 				);
 		});
 
+		// MODIFIED: Offer a choice of what kind of command to add.
 		setting.addButton((btn) =>
-			btn.setButtonText("Add Command").onClick(() => {
+			btn.setButtonText("Add Obsidian Command").onClick(() => {
 				new SearchableCommandModal(this.app, (command) => {
-					this.mapping.commands.push({
+					const newCommand: ObsidianCommand = {
+						type: "obsidian",
 						id: command.id,
 						name: command.name,
-					});
+					};
+					this.mapping.commands.push(newCommand);
+					this.redraw();
+				}).open();
+			}),
+		);
+		// NEW: Button to add the "Open file" virtual command
+		setting.addButton((btn) =>
+			btn.setButtonText("Add 'Open file' Command").onClick(() => {
+				new FileSuggestModal(this.app, (file) => {
+					const newCommand: OpenFileCommand = {
+						type: "open-file",
+						path: file.path,
+						name: `Open file: ${file.basename}`,
+					};
+					this.mapping.commands.push(newCommand);
 					this.redraw();
 				}).open();
 			}),

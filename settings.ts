@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { App, Notice, PluginSettingTab, Setting } from "obsidian";
 import LeaderHotkeys from "./main";
 import { CommandMapping, Hotkey } from "./types";
 import { toDisplayString, areSequencesEqual } from "./utils";
@@ -82,7 +82,14 @@ export class LeaderSettingsTab extends PluginSettingTab {
 			);
 
 		containerEl.createEl("h3", { text: "Command Mappings" });
-
+		new Setting(containerEl).addButton((button) =>
+			button
+				.setButtonText("Add new mapping")
+				.setCta()
+				.onClick(() => {
+					this.openAddMappingWorkflow();
+				}),
+		);
 		this.plugin.settings.mappings.forEach((mapping, index) => {
 			const setting = new Setting(containerEl).setName(
 				mapping.commands.map((c) => c.name).join(" → "),
@@ -117,15 +124,6 @@ export class LeaderSettingsTab extends PluginSettingTab {
 					});
 			});
 		});
-
-		new Setting(containerEl).addButton((button) =>
-			button
-				.setButtonText("Add new mapping")
-				.setCta()
-				.onClick(() => {
-					this.openAddMappingWorkflow();
-				}),
-		);
 	}
 
 	private openAddMappingWorkflow() {
@@ -139,7 +137,7 @@ export class LeaderSettingsTab extends PluginSettingTab {
 				areSequencesEqual(m.trigger, savedMapping.trigger),
 			);
 			if (existing) {
-				new (this.app as any).Notice(
+				new Notice(
 					`Error: Sequence "${toDisplayString(
 						savedMapping.trigger,
 					)}" is already mapped to "${existing.commands.map((c) => c.name).join(" → ")}".`,
@@ -161,7 +159,7 @@ export class LeaderSettingsTab extends PluginSettingTab {
 					areSequencesEqual(m.trigger, savedMapping.trigger),
 			);
 			if (existing) {
-				new (this.app as any).Notice(
+				new Notice(
 					`Error: Sequence "${toDisplayString(
 						savedMapping.trigger,
 					)}" is already mapped to "${existing.commands.map((c) => c.name).join(" → ")}".`,

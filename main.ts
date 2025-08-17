@@ -4,6 +4,8 @@ import {
 	DEFAULT_SETTINGS,
 	Hotkey,
 	CommandMapping,
+	MappedCommand,
+	OpenFileCommand,
 } from "./types";
 import { LeaderSettingsTab } from "./settings";
 import {
@@ -125,9 +127,19 @@ export default class LeaderHotkeys extends Plugin {
 		}
 	}
 
+	// MODIFIED: Handle different command types
 	private executeCommand(mapping: CommandMapping) {
 		for (const command of mapping.commands) {
-			(this.app as any).commands.executeCommandById(command.id);
+			switch (command.type) {
+				case "obsidian":
+					(this.app as any).commands.executeCommandById(command.id);
+					break;
+				case "open-file":
+					this.app.workspace.openLinkText(command.path, "");
+					break;
+				default:
+					console.warn("Unknown command type:", command);
+			}
 		}
 		this.exitLeaderMode();
 	}
@@ -191,16 +203,33 @@ export default class LeaderHotkeys extends Plugin {
 	async loadSettings() {
 		const savedData = await this.loadData();
 
-		// Migration for command chaining
+		// Migration for command chaining and command types
 		if (savedData && savedData.mappings) {
 			savedData.mappings = savedData.mappings.map((m: any) => {
-				// If it has commandId, it's the old format
-				if (m.commandId && !m.commands) {
-					return {
-						trigger: m.trigger,
-						commands: [{ id: m.commandId, name: m.commandName }],
-					};
+				let commands = m.commands;
+
+				// Old format migration: commandId -> commands array
+				if (m.commandId && !commands) {
+					commands = [{ id: m.commandId, name: m.commandName }];
 				}
+
+				// New format migration: ensure type property exists
+				if (commands) {
+					m.commands = commands.map((c: any) => {
+						if (!c.type) {
+							// If type is missing, it's an old Obsidian command
+							return {
+								...c,
+								type: "obsidian",
+							};
+						}
+						return c;
+					});
+				}
+				// Clean up old properties if they exist
+				delete m.commandId;
+				delete m.commandName;
+
 				return m;
 			});
 		}
