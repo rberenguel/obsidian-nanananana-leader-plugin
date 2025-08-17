@@ -1,7 +1,7 @@
 {
 	"id": "nanananana",
 	"name": "Nanananana: Leader",
-	"version": "0.3.0",
+	"version": "0.4.0",
 	"minAppVersion": "0.15.0",
 	"description": "A modal, keyboard-driven plugin for fast and efficient highlighting in Obsidian.",
 	"author": "Ruben Berenguel",
