@@ -127,15 +127,14 @@ export default class LeaderHotkeys extends Plugin {
 		}
 	}
 
-	// MODIFIED: Handle different command types
-	private executeCommand(mapping: CommandMapping) {
+	private async executeCommand(mapping: CommandMapping) {
 		for (const command of mapping.commands) {
 			switch (command.type) {
 				case "obsidian":
 					(this.app as any).commands.executeCommandById(command.id);
 					break;
 				case "open-file":
-					this.app.workspace.openLinkText(command.path, "");
+					await this.app.workspace.openLinkText(command.path, "");
 					break;
 				default:
 					console.warn("Unknown command type:", command);

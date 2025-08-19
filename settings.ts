@@ -2,7 +2,11 @@ import { App, Notice, PluginSettingTab, Setting } from "obsidian";
 import LeaderHotkeys from "./main";
 import { CommandMapping, Hotkey } from "./types";
 import { toDisplayString, areSequencesEqual } from "./utils";
-import { KeyRecorderModal, MappingEditModal } from "./modals";
+import {
+	KeyRecorderModal,
+	MappingEditModal,
+	ConfirmationModal,
+} from "./modals";
 
 export class LeaderSettingsTab extends PluginSettingTab {
 	plugin: LeaderHotkeys;
@@ -117,10 +121,20 @@ export class LeaderSettingsTab extends PluginSettingTab {
 				button
 					.setIcon("trash")
 					.setTooltip("Delete mapping")
-					.onClick(async () => {
-						this.plugin.settings.mappings.splice(index, 1);
-						await this.plugin.saveSettings();
-						this.display();
+					.onClick(() => {
+						// MODIFIED: Use the confirmation modal instead of deleting directly
+						new ConfirmationModal(
+							this.app,
+							"Delete Mapping",
+							`Are you sure you want to delete the mapping for "${toDisplayString(
+								mapping.trigger,
+							)}"? This cannot be undone.`,
+							async () => {
+								this.plugin.settings.mappings.splice(index, 1);
+								await this.plugin.saveSettings();
+								this.display(); // Redraw the settings
+							},
+						).open();
 					});
 			});
 		});
